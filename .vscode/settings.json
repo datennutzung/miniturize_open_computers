@@ -1,0 +1,8 @@
+{
+    "Lua.diagnostics.globals": [
+        "placeDown"
+    ],
+    "Lua.diagnostics.disable": [
+        "lowercase-global"
+    ]
+}

@@ -3,6 +3,7 @@ local robot = require("robot")
 local component = require("component")
 local computer = component.computer
 local sides = require("sides")
+local look_vars = false
 
 -- You can change this --
 local layout = {
@@ -20,6 +21,7 @@ local layout = {
 
 local dropSlot = 1                  -- the slot where the drop item is
 local dropCount = 1                 -- how many items should be dropped
+
 local rsSignalSide = sides.front    -- if no redstone signal, use nil
 local rsModeHigh = false            -- redstons signal means work
 local outputBottomRedstone = true   -- send a rs signal to the bottom
@@ -28,6 +30,7 @@ local beeps = true                  -- turn off the beeps
 
 -- Do not change after this --
 local dimensions = #layout
+local inventorySize = robot.inventorySize()
 
 local function randomBeep()
     if beeps then
@@ -63,7 +66,7 @@ end
 local function getNrItems()
     local itemCounts = {}
     for z = 1, dimensions do
-        for i = 1, dimensions^2 do
+        for i = 1, #layout[z] do
             local itemNr = layout[z][i]
             if itemNr ~= 0 then
                 local ic = itemCounts[itemNr]
@@ -95,13 +98,17 @@ local function placeDown(slot)
 end
 
 local function buildOneLayer(layer, layerNr)
-    for i = 1, dimensions^2 do
-        if i == math.ceil(dimensions^2/2) and layerNr == 1 then
-            robot.select(nrItems+1)
+    for i = 1, #layer do
+        if layerNr == 1 and i == math.ceil(#layer/2) then
+            robot.select(inventorySize)
             robot.suckDown()
             randomBeep()
         end
-        placeDown(layer[i])
+        if not placeDown(layer[i]) then
+            robot.select(layer[i]+nrItems)
+            robot.transferTo(layer[i])
+            placeDown(layer[i])
+        end
         robot.forward()
         if i % dimensions == 0 and i ~= dimensions^2 then
             if i % (dimensions*2) == 0 then
@@ -132,6 +139,7 @@ local function buildLayers()
 end
 
 local function getItems()
+    local stackSize = 64
     for i = 1, nrItems do
         robot.turnRight()
         robot.forward()
@@ -139,6 +147,10 @@ local function getItems()
         robot.select(i)
         randomBeep()
         robot.suck(itemCounts[i])
+        if itemCounts[i] > stackSize then
+            robot.select(nrItems+i)
+            robot.suck(itemCounts[i]-stackSize)
+        end
     end
 end
 
@@ -168,14 +180,13 @@ function main()
         robot.turnLeft()
         while not robot.detect() do robot.forward() end
         -- deposit items
-        robot.select(nrItems+1)
+        robot.select(inventorySize)
         robot.dropUp()
         randomBeep()
     end
     os.sleep(waitTime)
 end
 
-local look_vars = false
 while not look_vars do
     main()
 end
